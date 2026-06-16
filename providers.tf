@@ -3,7 +3,6 @@ provider "google" {
   region  = var.region
 }
 
-# Supplies short-lived OAuth2 tokens to the kubernetes and helm providers
 data "google_client_config" "default" {}
 
 provider "kubernetes" {
