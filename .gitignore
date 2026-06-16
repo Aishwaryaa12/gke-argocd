@@ -1,0 +1,35 @@
+
+# Local .terraform directory contains provider binaries (~600 MB) — never commit
+.terraform/
+
+# State files 
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Override files 
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Plan output files 
+*.tfplan
+
+# Variables files that may contain secrets
+#terraform.tfvars
+
+
+# Application Default Credentials — never commit
+application_default_credentials.json
+*.json.bak
+
+.DS_Store
+.idea/
+*.swp
+*.swo
+.vscode/

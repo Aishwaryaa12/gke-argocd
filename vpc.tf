@@ -1,0 +1,69 @@
+resource "google_compute_network" "vpc" {
+  project                 = var.project_id
+  name                    = var.network_name
+  auto_create_subnetworks = false
+  routing_mode            = "REGIONAL"
+  description             = "Custom VPC for GKE cluster"
+}
+
+resource "google_compute_subnetwork" "subnet" {
+  project       = var.project_id
+  name          = var.subnet_name
+  region        = var.region
+  network       = google_compute_network.vpc.id
+  ip_cidr_range = var.subnet_cidr
+
+  private_ip_google_access = true
+
+  secondary_ip_range {
+    range_name    = "pods-range"
+    ip_cidr_range = var.pods_cidr
+  }
+
+  secondary_ip_range {
+    range_name    = "services-range"
+    ip_cidr_range = var.services_cidr
+  }
+}
+
+resource "google_compute_firewall" "allow_internal" {
+  project     = var.project_id
+  name        = "${var.network_name}-allow-internal"
+  network     = google_compute_network.vpc.name
+  description = "Allow all internal traffic within the VPC"
+  direction   = "INGRESS"
+  priority    = 1000
+
+  allow {
+    protocol = "tcp"
+  }
+  allow {
+    protocol = "udp"
+  }
+  allow {
+    protocol = "icmp"
+  }
+
+  source_ranges = [
+    var.subnet_cidr,
+    var.pods_cidr,
+    var.services_cidr,
+  ]
+}
+
+resource "google_compute_firewall" "allow_gke_control_plane" {
+  project     = var.project_id
+  name        = "${var.network_name}-allow-gke-control-plane"
+  network     = google_compute_network.vpc.name
+  description = "Allow GKE control plane to reach node kubelets and webhooks"
+  direction   = "INGRESS"
+  priority    = 1000
+
+  allow {
+    protocol = "tcp"
+    ports    = ["8443", "10250"]
+  }
+
+  source_ranges = ["172.16.0.0/28"]
+  target_tags   = ["gke-node"]
+}
