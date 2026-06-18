@@ -3,6 +3,9 @@
 # These values override the defaults in the chart.
 
 immich:
+  persistence:
+    library:
+      existingClaim: immich-pvc
   configuration:
     server:
       externalDomain: "https://immich.cralyx.com"
