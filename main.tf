@@ -207,37 +207,33 @@ resource "helm_release" "argocd" {
   ]
 }
 
-resource "kubernetes_manifest" "argocd_root_app" {
-  manifest = {
-    apiVersion = "argoproj.io/v1alpha1"
-    kind       = "Application"
-    metadata = {
-      name      = "root-apps"
-      namespace = kubernetes_namespace.argocd.metadata[0].name
-    }
-    spec = {
-      project = "default"
-      source = {
-        repoURL        = "https://github.com/Aishwaryaa12/gke-argocd.git"
-        targetRevision = "HEAD"
-        path           = "gitops/apps"
-      }
-      destination = {
-        server    = "https://kubernetes.default.svc"
-        namespace = kubernetes_namespace.argocd.metadata[0].name
-      }
-      syncPolicy = {
-        automated = {
-          prune    = true
-          selfHeal = true
-        }
-      }
-    }
-  }
+resource "null_resource" "argocd_root_app" {
+  depends_on = [helm_release.argocd]
 
-  depends_on = [
-    helm_release.argocd
-  ]
+  provisioner "local-exec" {
+    command = <<EOT
+cat <<EOF | kubectl apply -n ${var.argocd_namespace} -f -
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-apps
+  namespace: ${var.argocd_namespace}
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Aishwaryaa12/gke-argocd.git
+    targetRevision: HEAD
+    path: gitops/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ${var.argocd_namespace}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+EOF
+EOT
+  }
 }
 
 resource "google_project_service" "secretmanager" {
