@@ -120,6 +120,7 @@ resource "kubernetes_namespace" "argocd" {
       "app.kubernetes.io/managed-by" = "terraform"
       "env"                          = "dev"
       "policy-enforcement"           = "false"
+      "shared-gateway-access"        = "true"
     }
   }
 
