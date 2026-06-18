@@ -1,0 +1,8 @@
+# values.yaml for postgres-cluster
+cluster:
+  name: primary-db
+  instances: 2
+  storage:
+    size: 10Gi
+  backup:
+    bucket: "gs://postgres-backup-1234" # Should be injected via ESO/TF in prod

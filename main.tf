@@ -224,8 +224,8 @@ resource "kubernetes_manifest" "argocd_root_app" {
       project = "default"
       source = {
         repoURL        = "git@github.com:Aishwaryaa12/gke-argocd.git"
-        targetRevision = "HEAD"
-        path           = "gitops/apps"
+        targetRevision = "main"
+        path           = "gitops/argocd"
       }
       destination = {
         server    = "https://kubernetes.default.svc"

@@ -15,3 +15,7 @@
 ## 4. External Secrets Operator (ESO) vs Sealed Secrets
 **Decision:** Use External Secrets Operator integrated with GCP Secret Manager via Workload Identity.
 **Rationale:** ESO natively syncs secrets from an external, centralized, and audited vault (GCP Secret Manager) into Kubernetes native Secrets. This avoids checking encrypted secrets into Git (as with Sealed Secrets) and provides a clear separation of concerns, where Terraform provisions the GCP secrets and IAM, and GitOps handles the sync.
+
+## 5. ApplicationSet Path Convention
+**Decision:** Adopt a strict `gitops/workloads/helm/<namespace>/<app>` structure for all Helm-based workloads.
+**Rationale:** We are using an ArgoCD ApplicationSet with a Git Directory Generator targeting `gitops/workloads/helm/*/*`. The ApplicationSet derives the target namespace using the `{{path[3]}}` variable. Because `path[3]` resolves to the 4th segment in the directory tree (which corresponds to `<namespace>`), **this directory depth must be strictly maintained**. If an app directory is moved one level up or down, the namespace mapping will fail or map incorrectly, breaking the deployments silently.

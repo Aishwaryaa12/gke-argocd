@@ -1,0 +1,22 @@
+
+project_id = "project-68d4f10e-27fc-4ab1-ab5"
+
+region            = "asia-south1"
+zone              = "asia-south1-a"
+cluster_name      = "gke-argocd-cluster"
+network_name      = "gke-vpc"
+subnet_name       = "gke-subnet"
+node_machine_type = "e2-standard-2"
+node_count        = 3
+node_disk_size_gb = 50
+node_disk_type    = "pd-standard"
+letsencrypt_email = "aish@cralyx.com"
+
+argocd_namespace     = "argocd"
+argocd_chart_version = "9.5.21"
+
+master_authorized_networks = "0.0.0.0/0"
+master_ipv4_cidr_block     = "172.16.0.0/28"
+eso_managed_secrets        = []
+
+# Approximate Monthly Cost: ~$95 (3x e2-standard-2 nodes, zonal cluster, standard disks)

@@ -1,0 +1,26 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.cluster.name }}
+spec:
+  instances: {{ .Values.cluster.instances }}
+  
+  storage:
+    size: {{ .Values.cluster.storage.size }}
+    
+  backup:
+    barmanObjectStore:
+      destinationPath: {{ .Values.cluster.backup.bucket }}
+      googleCredentials:
+        gkeEnvironment: true
+    retentionPolicy: "30d"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: {{ .Values.cluster.name }}-backup
+spec:
+  schedule: "0 0 0 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: {{ .Values.cluster.name }}

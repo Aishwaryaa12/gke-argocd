@@ -21,9 +21,7 @@ override.tf.json
 *.tfplan
 
 # Variables files that may contain secrets
-#terraform.tfvars
-
-
+terraform.tfvars
 # Application Default Credentials — never commit
 application_default_credentials.json
 *.json.bak
