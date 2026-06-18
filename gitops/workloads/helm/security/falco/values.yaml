@@ -1,4 +1,0 @@
-falco:
-  driver:
-    enabled: false
-  tty: true
