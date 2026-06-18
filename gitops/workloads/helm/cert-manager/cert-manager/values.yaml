@@ -1,0 +1,5 @@
+cert-manager:
+  crds:
+    enabled: true
+  extraArgs:
+    - --feature-gates=ExperimentalGatewayAPISupport=true
