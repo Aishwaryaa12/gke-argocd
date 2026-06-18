@@ -22,6 +22,7 @@ spec:
               - cert-manager
               - cnpg-system
               - database
+              - external-secrets
       validate:
         message: "Privilege escalation is not allowed. Set allowPrivilegeEscalation to false."
         pattern:

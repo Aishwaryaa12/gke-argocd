@@ -22,6 +22,7 @@ spec:
               - cert-manager
               - cnpg-system
               - database
+              - external-secrets
       validate:
         message: "Using the :latest image tag is not allowed."
         pattern:
@@ -49,6 +50,7 @@ spec:
               - cert-manager
               - cnpg-system
               - database
+              - external-secrets
       validate:
         message: "An image tag is required."
         pattern:
