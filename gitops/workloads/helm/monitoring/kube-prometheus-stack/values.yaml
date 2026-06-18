@@ -13,6 +13,12 @@ kube-prometheus-stack:
     persistence:
       enabled: true
       size: 5Gi
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        url: http://loki:3100
+        access: proxy
+        isDefault: false
   alertmanager:
     config:
       route:

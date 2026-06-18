@@ -1,0 +1,4 @@
+falco:
+  driver:
+    kind: ebpf
+  tty: true
