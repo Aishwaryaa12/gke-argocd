@@ -1,1 +1,14 @@
-kyverno: {}
+kyverno:
+  policyReportsCleanup:
+    enabled: false
+  cleanupJobs:
+    admissionReports:
+      enabled: false
+    clusterAdmissionReports:
+      enabled: false
+    ephemeralReports:
+      enabled: false
+    clusterEphemeralReports:
+      enabled: false
+    updateRequests:
+      enabled: false
