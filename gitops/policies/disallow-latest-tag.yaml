@@ -14,9 +14,13 @@ spec:
       exclude:
         any:
         - resources:
-            namespaceSelector:
-              matchLabels:
-                policy-enforcement: "false"
+            namespaces:
+              - kube-system
+              - argocd
+              - security
+              - monitoring
+              - cert-manager
+              - cnpg-system
       validate:
         message: "Using the :latest image tag is not allowed."
         pattern:
@@ -36,9 +40,13 @@ spec:
       exclude:
         any:
         - resources:
-            namespaceSelector:
-              matchLabels:
-                policy-enforcement: "false"
+            namespaces:
+              - kube-system
+              - argocd
+              - security
+              - monitoring
+              - cert-manager
+              - cnpg-system
       validate:
         message: "An image tag is required."
         pattern:

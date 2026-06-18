@@ -14,9 +14,13 @@ spec:
       exclude:
         any:
         - resources:
-            namespaceSelector:
-              matchLabels:
-                policy-enforcement: "false"
+            namespaces:
+              - kube-system
+              - argocd
+              - security
+              - monitoring
+              - cert-manager
+              - cnpg-system
       validate:
         message: "Running as root is not allowed. Set runAsNonRoot to true."
         pattern:
