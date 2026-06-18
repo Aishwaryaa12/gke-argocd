@@ -1,4 +1,4 @@
 falco:
   driver:
-    kind: modern_ebpf
+    enabled: false
   tty: true
