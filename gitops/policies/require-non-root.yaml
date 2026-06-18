@@ -14,20 +14,21 @@ spec:
       exclude:
         any:
         - resources:
-            namespaces:
-              - kube-system
-              - argocd
-              - cert-manager
-              - monitoring
-              - cnpg-system
-              - external-secrets
-              - gmp-system
+            namespaceSelector:
+              matchLabels:
+                policy-enforcement: "false"
       validate:
         message: "Running as root is not allowed. Set runAsNonRoot to true."
         pattern:
           spec:
             securityContext:
               runAsNonRoot: true
+            =(ephemeralContainers):
+              - =(securityContext):
+                  =(runAsNonRoot): true
+            =(initContainers):
+              - =(securityContext):
+                  =(runAsNonRoot): true
             =(containers):
               - =(securityContext):
                   =(runAsNonRoot): true

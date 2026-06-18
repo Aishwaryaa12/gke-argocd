@@ -13,7 +13,10 @@ spec:
       port: 80
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              shared-gateway-access: "true"
     - name: https
       protocol: HTTPS
       port: 443
@@ -24,4 +27,7 @@ spec:
           - name: cralyx-tls-secret
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              shared-gateway-access: "true"

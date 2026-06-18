@@ -103,3 +103,19 @@ variable "letsencrypt_email" {
   description = "Email address for Let's Encrypt expiry notifications"
   type        = string
 }
+
+variable "master_authorized_networks" {
+  type        = string
+  description = "The CIDR block for master authorized networks"
+}
+
+variable "eso_managed_secrets" {
+  type        = list(string)
+  description = "List of Secret Manager secret IDs that ESO should be able to access"
+  default     = []
+}
+
+variable "master_ipv4_cidr_block" {
+  type        = string
+  description = "The CIDR range for the GKE control plane"
+}

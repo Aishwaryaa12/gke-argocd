@@ -52,3 +52,8 @@ variable "gke_node_sa_email" {
   type        = string
   description = "The email of the GKE node service account"
 }
+
+variable "master_authorized_networks" {
+  type        = string
+  description = "The CIDR block for master authorized networks"
+}

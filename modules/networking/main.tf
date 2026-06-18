@@ -64,7 +64,7 @@ resource "google_compute_firewall" "allow_gke_control_plane" {
     ports    = ["8443", "10250"]
   }
 
-  source_ranges = ["172.16.0.0/28"]
+  source_ranges = [var.master_ipv4_cidr_block]
   target_tags   = ["gke-node"]
 }
 

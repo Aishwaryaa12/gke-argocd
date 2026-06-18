@@ -30,5 +30,10 @@ variable "pods_cidr" {
 
 variable "services_cidr" {
   type        = string
-  description = "CIDR range for GKE services"
+  description = "The CIDR range for services"
+}
+
+variable "master_ipv4_cidr_block" {
+  type        = string
+  description = "The CIDR range for the GKE control plane"
 }

@@ -46,7 +46,7 @@ resource "google_iam_workload_identity_pool" "github_pool" {
   workload_identity_pool_id = "github-actions-pool"
   display_name              = "GitHub Actions Pool"
   project                   = var.project_id
-  
+
   depends_on = [google_project_service.iamcredentials]
 }
 
@@ -63,7 +63,7 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
     "attribute.ref"        = "assertion.ref"
   }
 
-  attribute_condition = "assertion.repository == 'Aishwaryaa12/immich'"
+  attribute_condition = "assertion.repository == 'Aishwaryaa12/gke-argocd' && assertion.ref == 'refs/heads/main'"
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
@@ -82,10 +82,12 @@ resource "google_service_account" "eso_sa" {
   project      = var.project_id
 }
 
-resource "google_project_iam_member" "eso_secret_accessor" {
-  project = var.project_id
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.eso_sa.email}"
+resource "google_secret_manager_secret_iam_member" "eso_secret_accessor" {
+  for_each  = toset(var.eso_managed_secrets)
+  project   = var.project_id
+  secret_id = each.value
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.eso_sa.email}"
 }
 
 resource "google_service_account_iam_member" "eso_workload_identity" {

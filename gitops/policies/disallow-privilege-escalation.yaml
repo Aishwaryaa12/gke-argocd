@@ -1,11 +1,11 @@
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
-  name: require-resource-limits
+  name: disallow-privilege-escalation
 spec:
   validationFailureAction: Enforce
   rules:
-    - name: validate-resources
+    - name: check-privilege-escalation
       match:
         any:
         - resources:
@@ -18,21 +18,15 @@ spec:
               matchLabels:
                 policy-enforcement: "false"
       validate:
-        message: "CPU and memory limits are required."
+        message: "Privilege escalation is not allowed. Set allowPrivilegeEscalation to false."
         pattern:
           spec:
             =(ephemeralContainers):
-              - resources:
-                  limits:
-                    memory: "?*"
-                    cpu: "?*"
+              - securityContext:
+                  allowPrivilegeEscalation: false
             =(initContainers):
-              - resources:
-                  limits:
-                    memory: "?*"
-                    cpu: "?*"
+              - securityContext:
+                  allowPrivilegeEscalation: false
             containers:
-              - resources:
-                  limits:
-                    memory: "?*"
-                    cpu: "?*"
+              - securityContext:
+                  allowPrivilegeEscalation: false

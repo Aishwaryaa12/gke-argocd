@@ -13,6 +13,19 @@ resource "google_container_cluster" "primary" {
     services_secondary_range_name = "services-range"
   }
 
+  master_authorized_networks_config {
+    cidr_blocks {
+      cidr_block   = var.master_authorized_networks
+      display_name = "admin"
+    }
+  }
+
+  resource_labels = {
+    environment = "dev"
+    managed-by  = "terraform"
+    team        = "devops"
+  }
+
   remove_default_node_pool = true
   initial_node_count       = 1
 
@@ -55,16 +68,20 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  deletion_protection = false
+  deletion_protection = false # Intentional for dev teardown
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "google_container_node_pool" "primary" {
   provider = google
 
-  project    = var.project_id
-  name       = var.node_pool_name
-  location   = var.zone
-  cluster    = google_container_cluster.primary.name
+  project            = var.project_id
+  name               = var.node_pool_name
+  location           = var.zone
+  cluster            = google_container_cluster.primary.name
   initial_node_count = var.node_count
 
   autoscaling {
@@ -81,7 +98,11 @@ resource "google_container_node_pool" "primary" {
     disk_size_gb    = var.node_disk_size_gb
     disk_type       = var.node_disk_type
     service_account = var.gke_node_sa_email
-    oauth_scopes    = ["https://www.googleapis.com/auth/cloud-platform"]
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/logging.write",
+      "https://www.googleapis.com/auth/monitoring",
+      "https://www.googleapis.com/auth/devstorage.read_only"
+    ]
 
     workload_metadata_config {
       mode = "GKE_METADATA"

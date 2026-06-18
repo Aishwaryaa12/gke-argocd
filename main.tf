@@ -1,37 +1,40 @@
 module "networking" {
   source = "./modules/networking"
 
-  project_id    = var.project_id
-  network_name  = var.network_name
-  subnet_name   = var.subnet_name
-  region        = var.region
-  subnet_cidr   = var.subnet_cidr
-  pods_cidr     = var.pods_cidr
-  services_cidr = var.services_cidr
+  project_id             = var.project_id
+  network_name           = var.network_name
+  subnet_name            = var.subnet_name
+  region                 = var.region
+  subnet_cidr            = var.subnet_cidr
+  pods_cidr              = var.pods_cidr
+  services_cidr          = var.services_cidr
+  master_ipv4_cidr_block = var.master_ipv4_cidr_block
 }
 
 module "iam" {
   source = "./modules/iam"
 
-  project_id       = var.project_id
-  region           = var.region
-  docker_repo_name = google_artifact_registry_repository.docker_repo.name
+  project_id          = var.project_id
+  region              = var.region
+  docker_repo_name    = google_artifact_registry_repository.docker_repo.name
+  eso_managed_secrets = var.eso_managed_secrets
 }
 
 module "gke" {
   source = "./modules/gke"
 
-  project_id        = var.project_id
-  zone              = var.zone
-  cluster_name      = var.cluster_name
-  network_id        = module.networking.network_id
-  subnet_id         = module.networking.subnet_id
-  node_pool_name    = var.node_pool_name
-  node_count        = var.node_count
-  node_machine_type = var.node_machine_type
-  node_disk_size_gb = var.node_disk_size_gb
-  node_disk_type    = var.node_disk_type
-  gke_node_sa_email = module.iam.gke_node_sa_email
+  project_id                 = var.project_id
+  zone                       = var.zone
+  cluster_name               = var.cluster_name
+  network_id                 = module.networking.network_id
+  subnet_id                  = module.networking.subnet_id
+  node_pool_name             = var.node_pool_name
+  node_count                 = var.node_count
+  node_machine_type          = var.node_machine_type
+  node_disk_size_gb          = var.node_disk_size_gb
+  node_disk_type             = var.node_disk_type
+  gke_node_sa_email          = module.iam.gke_node_sa_email
+  master_authorized_networks = var.master_authorized_networks
 }
 
 moved {
@@ -116,6 +119,7 @@ resource "kubernetes_namespace" "argocd" {
     labels = {
       "app.kubernetes.io/managed-by" = "terraform"
       "env"                          = "dev"
+      "policy-enforcement"           = "false"
     }
   }
 
@@ -126,7 +130,7 @@ resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
-  version          = "7.4.4"
+  version          = var.argocd_chart_version
   namespace        = kubernetes_namespace.argocd.metadata[0].name
   create_namespace = false
 
@@ -207,49 +211,41 @@ resource "helm_release" "argocd" {
   ]
 }
 
-resource "null_resource" "argocd_root_app" {
+resource "kubernetes_manifest" "argocd_root_app" {
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name      = "root-apps"
+      namespace = var.argocd_namespace
+    }
+    spec = {
+      project = "default"
+      source = {
+        repoURL        = "git@github.com:Aishwaryaa12/gke-argocd.git"
+        targetRevision = "HEAD"
+        path           = "gitops/apps"
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = var.argocd_namespace
+      }
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+      }
+    }
+  }
+
   depends_on = [helm_release.argocd]
-
-  provisioner "local-exec" {
-    command = <<EOT
-cat <<EOF | kubectl apply -n ${var.argocd_namespace} -f -
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: root-apps
-  namespace: ${var.argocd_namespace}
-spec:
-  project: default
-  source:
-    repoURL: git@github.com:Aishwaryaa12/gke-argocd.git
-    targetRevision: HEAD
-    path: gitops/apps
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: ${var.argocd_namespace}
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-EOF
-EOT
-  }
 }
 
-resource "google_project_service" "secretmanager" {
+resource "google_project_service" "artifactregistry" {
   project            = var.project_id
-  service            = "secretmanager.googleapis.com"
+  service            = "artifactregistry.googleapis.com"
   disable_on_destroy = false
-}
-
-resource "google_secret_manager_secret" "immich_db_password" {
-  secret_id = "immich-db-password"
-
-  replication {
-    auto {}
-  }
-
-  depends_on = [google_project_service.secretmanager]
 }
 
 output "cluster_name" {

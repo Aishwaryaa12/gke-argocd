@@ -14,17 +14,38 @@ spec:
       exclude:
         any:
         - resources:
-            namespaces:
-              - kube-system
-              - argocd
-              - cert-manager
-              - monitoring
-              - cnpg-system
-              - external-secrets
-              - gmp-system
+            namespaceSelector:
+              matchLabels:
+                policy-enforcement: "false"
       validate:
         message: "Using the :latest image tag is not allowed."
         pattern:
           spec:
+            =(ephemeralContainers):
+              - image: "!*:latest"
+            =(initContainers):
+              - image: "!*:latest"
             containers:
               - image: "!*:latest"
+    - name: require-image-tag-separator
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      exclude:
+        any:
+        - resources:
+            namespaceSelector:
+              matchLabels:
+                policy-enforcement: "false"
+      validate:
+        message: "An image tag is required."
+        pattern:
+          spec:
+            =(ephemeralContainers):
+              - image: "*:*"
+            =(initContainers):
+              - image: "*:*"
+            containers:
+              - image: "*:*"
