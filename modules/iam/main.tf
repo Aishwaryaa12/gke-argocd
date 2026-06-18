@@ -75,3 +75,21 @@ resource "google_service_account_iam_member" "workload_identity_impersonation" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_pool.name}/attribute.repository/Aishwaryaa12/immich"
 }
+
+resource "google_service_account" "eso_sa" {
+  account_id   = "external-secrets-sa"
+  display_name = "Service Account for External Secrets Operator"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "eso_secret_accessor" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.eso_sa.email}"
+}
+
+resource "google_service_account_iam_member" "eso_workload_identity" {
+  service_account_id = google_service_account.eso_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[external-secrets/external-secrets]"
+}

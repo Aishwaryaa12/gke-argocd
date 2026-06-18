@@ -12,3 +12,8 @@ output "github_actions_service_account_email" {
   value       = google_service_account.github_actions.email
   description = "The Service Account email for GitHub Actions to impersonate"
 }
+
+output "eso_sa_email" {
+  value       = google_service_account.eso_sa.email
+  description = "Email of the External Secrets Operator service account"
+}

@@ -49,3 +49,8 @@ output "workload_identity_provider_name" {
   description = "The Workload Identity Provider name for GitHub Actions"
   value       = module.iam.workload_identity_provider_name
 }
+
+output "eso_sa_email" {
+  description = "The External Secrets Operator Service Account email"
+  value       = module.iam.eso_sa_email
+}
