@@ -15,8 +15,10 @@ controllers:
           DB_HOSTNAME: "immich-pg-rw"
           DB_USERNAME: "immich"
           DB_DATABASE_NAME: "immich"
-          DB_PASSWORD: "immichpassword" # Consider injecting this via External Secrets Operator instead of plain text!
           REDIS_HOSTNAME: "immich-redis"
+        envFrom:
+          - secretRef:
+              name: immich-db-password-secret
 
 # ValKey (Redis replacement included by default in the chart)
 valkey:
