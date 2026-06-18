@@ -12,7 +12,7 @@ spec:
       helm:
         valueFiles:
           - $values/gitops/apps/immich-values.yaml
-    - repoURL: https://github.com/Aishwaryaa12/gke-argocd.git
+    - repoURL: git@github.com:Aishwaryaa12/gke-argocd.git
       targetRevision: HEAD
       ref: values
   destination:

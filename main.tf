@@ -221,7 +221,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/Aishwaryaa12/gke-argocd.git
+    repoURL: git@github.com:Aishwaryaa12/gke-argocd.git
     targetRevision: HEAD
     path: gitops/apps
   destination:
