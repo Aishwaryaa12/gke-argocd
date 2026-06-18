@@ -22,7 +22,6 @@ spec:
               - cnpg-system
               - external-secrets
               - gmp-system
-              - immich
       validate:
         message: "CPU and memory limits are required."
         pattern:

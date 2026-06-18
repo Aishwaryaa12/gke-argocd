@@ -22,7 +22,6 @@ spec:
               - cnpg-system
               - external-secrets
               - gmp-system
-              - immich
       validate:
         message: "Using the :latest image tag is not allowed."
         pattern:
