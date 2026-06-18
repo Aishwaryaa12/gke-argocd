@@ -252,6 +252,8 @@ resource "google_secret_manager_secret" "immich_db_password" {
   replication {
     auto {}
   }
+
+  depends_on = [google_project_service.secretmanager]
 }
 
 output "cluster_name" {

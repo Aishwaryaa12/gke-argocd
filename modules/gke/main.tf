@@ -31,9 +31,6 @@ resource "google_container_cluster" "primary" {
     horizontal_pod_autoscaling {
       disabled = false
     }
-    network_policy_config {
-      disabled = false
-    }
   }
 
   gateway_api_config {
