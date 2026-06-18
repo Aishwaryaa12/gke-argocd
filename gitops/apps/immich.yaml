@@ -5,10 +5,16 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  source:
-    repoURL: https://github.com/Aishwaryaa12/immich.git
-    targetRevision: HEAD
-    path: immich
+  sources:
+    - repoURL: https://immich-app.github.io/immich-charts
+      chart: immich
+      targetRevision: 0.12.0
+      helm:
+        valueFiles:
+          - $values/gitops/apps/immich-values.yaml
+    - repoURL: https://github.com/Aishwaryaa12/gke-argocd.git
+      targetRevision: HEAD
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: immich

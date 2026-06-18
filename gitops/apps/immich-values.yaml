@@ -1,0 +1,34 @@
+# Values for the official Immich Helm Chart (immich/immich)
+# Documentation: https://github.com/immich-app/immich-charts
+# These values override the defaults in the chart.
+
+immich:
+  configuration:
+    server:
+      externalDomain: "https://immich.cralyx.com"
+      
+controllers:
+  main:
+    containers:
+      main:
+        env:
+          DB_HOSTNAME: "immich-pg-rw"
+          DB_USERNAME: "immich"
+          DB_DATABASE_NAME: "immich"
+          DB_PASSWORD: "immichpassword" # Consider injecting this via External Secrets Operator instead of plain text!
+          REDIS_HOSTNAME: "immich-redis"
+
+# ValKey (Redis replacement included by default in the chart)
+valkey:
+  enabled: true # We let the chart manage ValKey
+
+# Server Component
+server:
+  enabled: true
+  ingress:
+    main:
+      enabled: false # We use our own Gateway API (HTTPRoute) instead of Nginx Ingress
+
+# Machine Learning Component
+machine-learning:
+  enabled: true

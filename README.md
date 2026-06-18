@@ -1,39 +1,60 @@
-# GKE + ArgoCD Terraform Setup
+# GKE + ArgoCD Platform Engineering Setup
 
-A production-grade (but cost-optimised) Terraform configuration that provisions a **GKE Standard** cluster inside a **custom VPC** in `asia-south1` and deploys **ArgoCD** via the Helm provider.
+A production-grade, modular Terraform configuration that provisions a **GKE Standard** cluster, custom VPC, and deploys **ArgoCD** via the `App of Apps` GitOps pattern.
 
 ---
 
-## File Structure
+## 🏗️ Architecture
+
+```mermaid
+graph TD
+    subgraph GCP
+        subgraph VPC
+            Subnet[GKE Subnet]
+        end
+        GKE[GKE Cluster]
+        AR[Artifact Registry]
+        SM[Secret Manager]
+    end
+
+    subgraph "GKE Cluster Workloads"
+        ArgoCD[ArgoCD]
+        CertManager[Cert-Manager]
+        ESO[External Secrets Operator]
+        GatewayAPI[Gateway API]
+        Immich[Immich]
+    end
+
+    ArgoCD -->|App of Apps| CertManager
+    ArgoCD -->|App of Apps| ESO
+    ArgoCD -->|App of Apps| GatewayAPI
+    ArgoCD -->|App of Apps| Immich
+    ESO -->|WIF Auth| SM
+```
+
+---
+
+## 📁 File Structure
 
 ```
 gke-argocd/
-├── versions.tf       # Terraform, provider versions + GCS backend
-├── variables.tf      # All input variables
-├── terraform.tfvars  # Pre-filled values (edit project_id if needed)
-├── providers.tf      # google / kubernetes / helm providers (dynamic auth)
-├── vpc.tf            # Custom VPC + subnet + secondary IP ranges + firewall
-├── iam.tf            # Dedicated GKE node SA with least-privilege roles
-├── gke.tf            # GKE Standard cluster
-├── node_pool.tf      # 1 × e2-standard-2 node pool
-├── argocd.tf         # ArgoCD Helm release + namespace
-└── outputs.tf        # Useful outputs + reminders
+├── modules/
+│   ├── networking/   # VPC, Subnets, Firewalls
+│   ├── gke/          # Cluster and Node Pools
+│   └── iam/          # Workload Identity, Service Accounts
+├── gitops/
+│   ├── apps/           # ArgoCD Application manifests (App of Apps)
+│   └── infrastructure/ # Kubernetes manifests for cluster tooling
+├── main.tf           # Root module calling networking, gke, iam
+├── argocd.tf         # Bootstraps ArgoCD & App of Apps
+├── secrets.tf        # GCP Secret Manager resources
+├── variables.tf
+└── outputs.tf
 ```
 
 ---
 
-## Prerequisites
-
-| Tool | Version |
-|------|---------|
-| Terraform | ≥ 1.7.0 |
-| gcloud CLI | Latest |
-| kubectl | Latest |
-| helm | ≥ 3.x (optional, for manual ops) |
-
----
-
-## Step-by-Step Deployment
+## 🚀 Deployment Workflow
 
 ### 1. Authenticate with GCP
 
@@ -43,119 +64,41 @@ gcloud auth application-default login
 gcloud config set project project-68d4f10e-27fc-4ab1-ab5
 ```
 
-### 2. Enable required GCP APIs
+### 2. Initialise and Plan
 
 ```bash
-gcloud services enable \
-  container.googleapis.com \
-  compute.googleapis.com \
-  iam.googleapis.com \
-  cloudresourcemanager.googleapis.com \
-  storage.googleapis.com
-```
-
-### 3. Create the GCS backend bucket (one-time)
-
-```bash
-gsutil mb -p project-68d4f10e-27fc-4ab1-ab5 \
-          -l asia-south1 \
-          gs://terraform
-```
-
-> **Note:** GCS bucket names are globally unique. If `terraform` is taken, pick another name and update `versions.tf` and `terraform.tfvars`.
-
-### 4. Initialise Terraform
-
-```bash
-cd gke-argocd
 terraform init
-```
-
-### 5. Review the plan
-
-```bash
 terraform plan
 ```
 
-### 6. Apply (provisions cluster + deploys ArgoCD)
+### 3. Apply Infrastructure
 
 ```bash
 terraform apply
 ```
 
-> ⏱️ Expect **8–15 minutes** total:
-> - GKE cluster creation: ~8–10 min
-> - Node pool: ~2 min
-> - ArgoCD Helm deploy: ~2–3 min
+> **What happens?**
+> 1. Terraform creates the VPC, Subnet, IAM roles, and GKE cluster.
+> 2. Terraform installs ArgoCD into the cluster via Helm.
+> 3. Terraform deploys the "Root App of Apps" to ArgoCD.
+> 4. ArgoCD takes over and continuously synchronizes `cert-manager`, `external-secrets`, the Gateway API, and `immich` from the GitHub repository.
 
 ---
 
-## Post-Apply: Access ArgoCD
+## 🔐 Secrets Management
 
-### Configure kubectl
+We use **External Secrets Operator** (ESO) authenticated via **Workload Identity Federation** (WIF). 
 
-```bash
-gcloud container clusters get-credentials gke-argocd-cluster \
-  --zone asia-south1-a \
-  --project project-68d4f10e-27fc-4ab1-ab5
-```
-
-### Get the ArgoCD UI URL
-
-```bash
-kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-```
-
-Open `http://<EXTERNAL-IP>` in your browser.
-
-### Get the initial admin password
-
-```bash
-kubectl get secret argocd-initial-admin-secret -n argocd \
-  -o jsonpath='{.data.password}' | base64 -d && echo
-```
-
-Login with username `admin` and the password above.
+1. Passwords and API tokens are created securely in **Google Secret Manager** (`secrets.tf`).
+2. The ESO runs in the cluster and assumes the `external-secrets-sa` GCP Service Account.
+3. ESO syncs GCP Secrets into native Kubernetes `Secret` objects automatically.
 
 ---
 
-## Cost Breakdown (asia-south1)
+## 🌐 GitOps App of Apps
 
-| Resource | Details | Est. Cost/month |
-|---|---|---|
-| GKE Control Plane | 1 free zonal cluster (GKE free tier) | **$0** |
-| 1 × e2-standard-2 | 2 vCPU / 8 GB RAM | ~$49 |
-| GCP LoadBalancer | ArgoCD UI | ~$15–18 |
-| Boot disk | 50 GB pd-standard | ~$2 |
-| GCS state bucket | ~1 MB | ~$0.02 |
-| **Total** | | **~$66–69/month** |
+Instead of defining Kubernetes resources tightly coupled within Terraform state, this repository embraces a **True GitOps** approach.
 
-> 💡 Your $300 free trial gives roughly **4 months** at this rate.  
-> **Always run `terraform destroy` when done experimenting!**
-
----
-
-## Tearing Down
-
-```bash
-terraform destroy
-```
-
-This removes the GKE cluster, node pool, VPC, and ArgoCD namespace — but **not** the GCS backend bucket (to preserve your state history). Delete it manually if needed:
-
-```bash
-gsutil rm -r gs://terraform
-```
-
----
-
-## Security Notes
-
-| Item | Status | Action |
-|---|---|---|
-| ArgoCD TLS | ⚠️ HTTP only (`insecure=true`) | Add cert-manager + LetsEncrypt for prod |
-| Cluster deletion protection | Off | Set `deletion_protection = true` for prod |
-| Node SA | ✅ Least-privilege | — |
-| Workload Identity | ✅ Enabled | — |
-| Shielded VMs | ✅ Enabled | — |
-| Legacy metadata API | ✅ Disabled | — |
+- **Infrastructure layer**: Terraform provisions the raw compute and permissions.
+- **Platform layer**: ArgoCD acts as the continuous delivery tool, syncing the `gitops/` folder.
+- **Application layer**: Immich and other apps are deployed purely via Git commits.
