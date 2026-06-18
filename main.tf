@@ -240,6 +240,10 @@ resource "kubernetes_manifest" "argocd_root_app" {
     }
   }
 
+  field_manager {
+    force_conflicts = true
+  }
+
   depends_on = [helm_release.argocd]
 }
 

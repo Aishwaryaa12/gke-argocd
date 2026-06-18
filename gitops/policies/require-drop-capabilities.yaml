@@ -21,6 +21,7 @@ spec:
               - monitoring
               - cert-manager
               - cnpg-system
+              - database
       validate:
         message: "Containers must drop ALL capabilities."
         pattern:

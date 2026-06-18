@@ -21,6 +21,7 @@ spec:
               - monitoring
               - cert-manager
               - cnpg-system
+              - database
       validate:
         message: "Privilege escalation is not allowed. Set allowPrivilegeEscalation to false."
         pattern:

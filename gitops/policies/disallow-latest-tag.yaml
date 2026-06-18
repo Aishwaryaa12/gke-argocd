@@ -21,6 +21,7 @@ spec:
               - monitoring
               - cert-manager
               - cnpg-system
+              - database
       validate:
         message: "Using the :latest image tag is not allowed."
         pattern:
@@ -47,6 +48,7 @@ spec:
               - monitoring
               - cert-manager
               - cnpg-system
+              - database
       validate:
         message: "An image tag is required."
         pattern:
