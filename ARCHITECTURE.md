@@ -7,11 +7,11 @@ graph TD
     %% Define User / External Access
     User([User / Browser])
     Developer([Developer])
-    GitHub[GitHub Repo \n(Aishwaryaa12/gke-argocd)]
+    GitHub["GitHub Repo <br/>(Aishwaryaa12/gke-argocd)"]
 
     subgraph "Google Cloud Platform (GCP)"
         %% Cloud Load Balancing & Networking
-        GCLB[Cloud Load Balancer \n(Gateway API)]
+        GCLB["Cloud Load Balancer <br/>(Gateway API)"]
         SecretManager[GCP Secret Manager]
         ArtifactRegistry[Artifact Registry]
         WIF[Workload Identity Federation]
