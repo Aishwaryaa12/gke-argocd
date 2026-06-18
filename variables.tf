@@ -98,3 +98,8 @@ variable "argocd_release_name" {
   type        = string
   default     = "argocd"
 }
+
+variable "letsencrypt_email" {
+  description = "Email address for Let's Encrypt expiry notifications"
+  type        = string
+}

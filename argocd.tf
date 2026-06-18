@@ -8,29 +8,16 @@ resource "kubernetes_namespace" "argocd" {
     }
   }
 
-  depends_on = [google_container_node_pool.primary]
+  depends_on = [module.gke]
 }
 
 resource "helm_release" "argocd" {
-  name             = var.argocd_release_name
+  name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
-  version          = var.argocd_chart_version
+  version          = "7.4.4"
   namespace        = kubernetes_namespace.argocd.metadata[0].name
   create_namespace = false
-
-  wait    = true
-  timeout = 600
-
-  set {
-    name  = "redis-ha.enabled"
-    value = "false"
-  }
-
-  set {
-    name  = "redis.enabled"
-    value = "true"
-  }
 
   set {
     name  = "controller.replicas"
@@ -57,14 +44,10 @@ resource "helm_release" "argocd" {
     value = "false"
   }
 
-  set {
-    name  = "server.service.type"
-    value = "LoadBalancer"
-  }
 
   set {
-    name  = "server.insecure"
-    value = "true"
+    name  = "server.extraArgs[0]"
+    value = "--insecure"
   }
 
   set {
@@ -109,6 +92,39 @@ resource "helm_release" "argocd" {
 
   depends_on = [
     kubernetes_namespace.argocd,
-    google_container_node_pool.primary,
+    module.gke,
+  ]
+}
+
+resource "kubernetes_manifest" "argocd_root_app" {
+  manifest = {
+    apiVersion = "argoproj.io/v1alpha1"
+    kind       = "Application"
+    metadata = {
+      name      = "root-apps"
+      namespace = kubernetes_namespace.argocd.metadata[0].name
+    }
+    spec = {
+      project = "default"
+      source = {
+        repoURL        = "https://github.com/Aishwaryaa12/gke-argocd.git"
+        targetRevision = "HEAD"
+        path           = "gitops/apps"
+      }
+      destination = {
+        server    = "https://kubernetes.default.svc"
+        namespace = kubernetes_namespace.argocd.metadata[0].name
+      }
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
+        }
+      }
+    }
+  }
+
+  depends_on = [
+    helm_release.argocd
   ]
 }

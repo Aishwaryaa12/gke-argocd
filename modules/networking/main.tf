@@ -67,3 +67,17 @@ resource "google_compute_firewall" "allow_gke_control_plane" {
   source_ranges = ["172.16.0.0/28"]
   target_tags   = ["gke-node"]
 }
+
+# Allow Google Cloud Load Balancer Health Checks to reach the pods
+resource "google_compute_firewall" "allow_health_checks" {
+  project = var.project_id
+  name    = "${var.network_name}-allow-health-checks"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "tcp"
+  }
+
+  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
+  target_tags   = ["gke-node"]
+}
