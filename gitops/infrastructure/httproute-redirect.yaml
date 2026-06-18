@@ -6,6 +6,7 @@ metadata:
 spec:
   parentRefs:
   - name: external-gateway
+    namespace: default
     sectionName: http
   rules:
   - filters:
