@@ -11,6 +11,18 @@ spec:
         - resources:
             kinds:
               - Pod
+      exclude:
+        any:
+        - resources:
+            namespaces:
+              - kube-system
+              - argocd
+              - cert-manager
+              - monitoring
+              - cnpg-system
+              - external-secrets
+              - gmp-system
+              - immich
       validate:
         message: "Using the :latest image tag is not allowed."
         pattern:
