@@ -10,4 +10,3 @@ spec:
     kind: ClusterIssuer
   dnsNames:
     - argo.cralyx.com
-    - immich.cralyx.com
