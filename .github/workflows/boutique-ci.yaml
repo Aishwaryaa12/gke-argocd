@@ -88,7 +88,7 @@ jobs:
 
       - name: Generate and Attach SBOM
         run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sudo sh -s -- -b /usr/local/bin
           syft ${{ env.IMAGE_NAME }} -o spdx-json=sbom-${{ matrix.service }}.spdx.json
           cosign attach sbom --sbom sbom-${{ matrix.service }}.spdx.json ${{ env.IMAGE_NAME }}
           cosign sign --yes --attachment sbom ${{ env.IMAGE_NAME }}
