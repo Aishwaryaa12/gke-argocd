@@ -22,13 +22,17 @@ graph TD
         CertManager[Cert-Manager]
         ESO[External Secrets Operator]
         GatewayAPI[Gateway API]
-        Immich[Immich]
+        Kyverno[Kyverno]
+        CNPG[CloudNativePG]
+        OnlineBoutique[Online Boutique]
     end
 
     ArgoCD -->|App of Apps| CertManager
     ArgoCD -->|App of Apps| ESO
     ArgoCD -->|App of Apps| GatewayAPI
-    ArgoCD -->|App of Apps| Immich
+    ArgoCD -->|App of Apps| Kyverno
+    ArgoCD -->|App of Apps| CNPG
+    ArgoCD -->|App of Apps| OnlineBoutique
     ESO -->|WIF Auth| SM
 ```
 
@@ -80,7 +84,7 @@ terraform apply
 > 1. Terraform creates the VPC, Subnet, IAM roles, and GKE cluster.
 > 2. Terraform installs ArgoCD into the cluster via Helm.
 > 3. Terraform deploys the "Root App of Apps" to ArgoCD.
-> 4. ArgoCD takes over and continuously synchronizes `cert-manager`, `external-secrets`, the Gateway API, and `immich` from the GitHub repository.
+> 4. ArgoCD takes over and continuously synchronizes `cert-manager`, `external-secrets`, the Gateway API, `kyverno`, `cnpg`, and `online-boutique` from the GitHub repository.
 
 ---
 
@@ -88,7 +92,7 @@ terraform apply
 
 We use **External Secrets Operator** (ESO) authenticated via **Workload Identity Federation** (WIF). 
 
-1. Passwords and API tokens are created securely in **Google Secret Manager** (`secrets.tf`).
+1. Passwords and API tokens are created securely in **Google Secret Manager**.
 2. The ESO runs in the cluster and assumes the `external-secrets-sa` GCP Service Account.
 3. ESO syncs GCP Secrets into native Kubernetes `Secret` objects automatically.
 
@@ -100,4 +104,4 @@ Instead of defining Kubernetes resources tightly coupled within Terraform state,
 
 - **Infrastructure layer**: Terraform provisions the raw compute and permissions.
 - **Platform layer**: ArgoCD acts as the continuous delivery tool, syncing the `gitops/` folder.
-- **Application layer**: Immich and other apps are deployed purely via Git commits.
+- **Application layer**: Online Boutique and other apps are deployed purely via Git commits.
