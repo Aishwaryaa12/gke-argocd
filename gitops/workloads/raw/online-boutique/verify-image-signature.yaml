@@ -23,7 +23,7 @@ spec:
               - online-boutique
       verifyImages:
       - imageReferences:
-        - "asia-south1-docker.pkg.dev/gke-argocd-425211/gke-argocd-repo/*"
+        - "asia-south1-docker.pkg.dev/project-68d4f10e-27fc-4ab1-ab5/gke-apps-repo/*"
         verifyDigest: true
         required: true
         mutateDigest: true

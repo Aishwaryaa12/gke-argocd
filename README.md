@@ -43,11 +43,10 @@ gke-argocd/
 │   ├── gke/          # Cluster and Node Pools
 │   └── iam/          # Workload Identity, Service Accounts
 ├── gitops/
-│   ├── apps/           # ArgoCD Application manifests (App of Apps)
-│   └── infrastructure/ # Kubernetes manifests for cluster tooling
-├── main.tf           # Root module calling networking, gke, iam
-├── argocd.tf         # Bootstraps ArgoCD & App of Apps
-├── secrets.tf        # GCP Secret Manager resources
+│   ├── argocd/         # ArgoCD root applications
+│   ├── infrastructure/ # Kubernetes manifests for cluster tooling
+│   └── workloads/      # Workload manifests
+├── main.tf             # Root module calling networking, gke, iam
 ├── variables.tf
 └── outputs.tf
 ```

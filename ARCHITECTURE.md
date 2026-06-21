@@ -70,8 +70,11 @@ graph TD
 
     %% Flow: CI/CD
     Developer -->|Pushes Code| GitHub
-    GitHub -->|GitHub Actions| WIF
-    WIF -->|Push Image| ArtifactRegistry
+    GitHub -->|Triggers CI| GHA[GitHub Actions]
+    GHA -->|1. Build & Scan| GHA
+    GHA -->|2. WIF Auth| WIF
+    WIF -->|3. Sign & Push Image| ArtifactRegistry
+    GHA -->|4. Update GitOps Tag| GitHub
 
     %% Flow: Secrets
     ESO -->|Reads via Workload Identity| SecretManager
