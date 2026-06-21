@@ -15,7 +15,7 @@ permissions:
 env:
   PROJECT_ID: "project-68d4f10e-27fc-4ab1-ab5"
   GAR_LOCATION: "asia-south1"
-  REPOSITORY: "gke-argocd-repo"
+  REPOSITORY: "gke-apps-repo"
   WORKLOAD_IDENTITY_PROVIDER: "projects/128862263389/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider"
   SERVICE_ACCOUNT: "github-actions-sa@project-68d4f10e-27fc-4ab1-ab5.iam.gserviceaccount.com"
 

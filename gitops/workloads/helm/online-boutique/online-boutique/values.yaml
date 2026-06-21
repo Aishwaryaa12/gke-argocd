@@ -17,7 +17,7 @@
 # Declare variables to be passed into your templates.
 
 images:
-  repository: asia-south1-docker.pkg.dev/project-68d4f10e-27fc-4ab1-ab5/gke-argocd-repo
+  repository: asia-south1-docker.pkg.dev/project-68d4f10e-27fc-4ab1-ab5/gke-apps-repo
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
