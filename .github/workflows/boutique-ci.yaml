@@ -32,7 +32,7 @@ jobs:
       - name: Determine Build Directory
         run: |
           DIR="src/online-boutique/${{ matrix.service }}"
-          if [ -d "$DIR/src" ]; then
+          if [ -f "$DIR/src/Dockerfile" ]; then
             DIR="$DIR/src"
           fi
           echo "BUILD_DIR=$DIR" >> $GITHUB_ENV
