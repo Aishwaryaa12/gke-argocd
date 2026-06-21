@@ -1,10 +1,12 @@
 name: Boutique Shift-Left Security CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
     paths:
       - 'src/online-boutique/**'
+      - '.github/workflows/boutique-ci.yaml'
 
 permissions:
   contents: write
