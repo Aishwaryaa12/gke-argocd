@@ -1,107 +1,63 @@
-# GKE + ArgoCD Platform Engineering Setup
+# GKE, Terraform, and ArgoCD: Platform Engineering Reference Architecture
 
-A production-grade, modular Terraform configuration that provisions a **GKE Standard** cluster, custom VPC, and deploys **ArgoCD** via the `App of Apps` GitOps pattern.
+> **About:** A production-ready Platform Engineering reference architecture demonstrating a modern, secure, and fully automated cloud-native ecosystem. It features a hardened GKE cluster provisioned via Terraform, an ArgoCD GitOps control plane, and a complete SLSA-aligned supply chain CI/CD pipeline deploying the 11-microservice Google Online Boutique application.
 
----
+## Stack Overview
 
-## 🏗️ Architecture
+* **Infrastructure as Code**: Terraform, Google Kubernetes Engine (GKE)
+* **GitOps**: ArgoCD
+* **Continuous Integration**: GitHub Actions
+* **Security & Policy**: Kyverno, External Secrets Operator, Cosign, Sigstore
+* **Observability**: Prometheus, Loki, Grafana, Grafana Alloy
+* **Database**: CloudNativePG (PostgreSQL)
+* **Networking**: Kubernetes Gateway API, Dataplane V2 (Cilium)
 
-```mermaid
-graph TD
-    subgraph GCP
-        subgraph VPC
-            Subnet[GKE Subnet]
-        end
-        GKE[GKE Cluster]
-        AR[Artifact Registry]
-        SM[Secret Manager]
-    end
+## Architecture Overview
 
-    subgraph "GKE Cluster Workloads"
-        ArgoCD[ArgoCD]
-        CertManager[Cert-Manager]
-        ESO[External Secrets Operator]
-        GatewayAPI[Gateway API]
-        Kyverno[Kyverno]
-        CNPG[CloudNativePG]
-        OnlineBoutique[Online Boutique]
-    end
+![Architecture Diagram](./assets/architecture.png)
 
-    ArgoCD -->|App of Apps| CertManager
-    ArgoCD -->|App of Apps| ESO
-    ArgoCD -->|App of Apps| GatewayAPI
-    ArgoCD -->|App of Apps| Kyverno
-    ArgoCD -->|App of Apps| CNPG
-    ArgoCD -->|App of Apps| OnlineBoutique
-    ESO -->|WIF Auth| SM
-```
+The architecture is divided into three core layers.
 
----
+1. **The Infrastructure Layer**: Terraform manages the foundational Google Cloud Platform (GCP) resources. This includes the Virtual Private Cloud (VPC), the GKE cluster, IAM service accounts, and Artifact Registry.
+2. **The Platform Layer**: ArgoCD acts as the engine of the platform. It continuously synchronizes the state of the cluster with the Git repository. 
+3. **The Application Layer**: The Google Online Boutique demo runs on top of the platform. It consists of 11 distinct microservices (like Cart, Payment, and Catalog) that communicate securely within the cluster.
 
-## 📁 File Structure
+## Key Architectural Decisions
 
-```
-gke-argocd/
-├── modules/
-│   ├── networking/   # VPC, Subnets, Firewalls
-│   ├── gke/          # Cluster and Node Pools
-│   └── iam/          # Workload Identity, Service Accounts
-├── gitops/
-│   ├── argocd/         # ArgoCD root applications
-│   ├── infrastructure/ # Kubernetes manifests for cluster tooling
-│   └── workloads/      # Workload manifests
-├── main.tf             # Root module calling networking, gke, iam
-├── variables.tf
-└── outputs.tf
-```
+Several specific technical choices ensure the platform remains secure, highly scalable, and easy to maintain over time.
 
----
+### 1. Gateway API over Traditional Ingress
+The Kubernetes Gateway API is used instead of traditional ingress controllers like NGINX. The Gateway API integrates directly with Google Cloud Load Balancing. This enables native Google Cloud features like managed TLS certificates, Cloud Armor, and global Anycast IPs without managing a separate third party ingress controller. It also provides a cleaner, role oriented routing model.
 
-## 🚀 Deployment Workflow
+### 2. CloudNativePG over Managed Cloud SQL
+PostgreSQL is deployed inside the cluster using the CloudNativePG operator instead of relying on a managed service like Google Cloud SQL. This approach keeps cloud costs significantly lower while still providing enterprise grade database features. The operator automatically handles streaming replication, failover, and point in time recovery backups directly to Google Cloud Storage.
 
-### 1. Authenticate with GCP
+### 3. GKE Dataplane V2
+GKE Dataplane V2 replaces the standard kube proxy. Dataplane V2 is based on eBPF technology (Cilium). It delivers significantly higher networking performance, advanced NetworkPolicies, and deeper network visibility without the performance overhead of legacy iptables rules.
 
-```bash
-gcloud auth login
-gcloud auth application-default login
-gcloud config set project project-68d4f10e-27fc-4ab1-ab5
-```
+### 4. External Secrets Operator over Sealed Secrets
+The External Secrets Operator (ESO) integrates with Google Cloud Secret Manager via Workload Identity. ESO natively syncs secrets from a centralized and audited vault into Kubernetes native Secrets. This avoids the risk of checking encrypted secrets into Git. It also creates a clear separation of concerns. Terraform provisions the vault and access roles, while GitOps handles the synchronization.
 
-### 2. Initialise and Plan
+### 5. Strict ApplicationSet Path Convention
+A strict directory structure is adopted for all Helm based workloads. An ArgoCD ApplicationSet uses a Git Directory Generator targeting the workloads folder. The ApplicationSet relies on the folder path to dynamically determine the target namespace. Because of this automated mapping, the directory depth must remain exact to prevent deployments from failing.
 
-```bash
-terraform init
-terraform plan
-```
+## Supply Chain Security Pipeline
 
-### 3. Apply Infrastructure
+To ensure that only trusted code runs in the cluster, a GitHub Actions workflow implements a complete, SLSA aligned supply chain for all 11 microservices. 
 
-```bash
-terraform apply
-```
+1. **Static Analysis**: Whenever code is pushed, a Trivy SAST scan runs directly on the source code to catch vulnerabilities early.
+2. **Keyless Authentication**: The pipeline authenticates to Google Cloud via Workload Identity Federation. This removes the massive security risk of storing long lived Service Account JSON keys in GitHub.
+3. **Build and Scan**: The pipeline builds the Docker image and tags it with the exact Git commit hash. A second Trivy scan checks the built container image for critical vulnerabilities before it can be pushed.
+4. **Sign and Attest**: The verified image is pushed to Artifact Registry. It is then cryptographically signed using Cosign keyless signing via the Sigstore transparency log. Finally, a Software Bill of Materials (SBOM) is generated, attached to the image, and signed.
+5. **GitOps Update**: Once all builds and scans pass successfully, a final job automatically commits the new image hashes into the ArgoCD configuration. ArgoCD detects the change and deploys the new images.
 
-> **What happens?**
-> 1. Terraform creates the VPC, Subnet, IAM roles, and GKE cluster.
-> 2. Terraform installs ArgoCD into the cluster via Helm.
-> 3. Terraform deploys the "Root App of Apps" to ArgoCD.
-> 4. ArgoCD takes over and continuously synchronizes `cert-manager`, `external-secrets`, the Gateway API, `kyverno`, `cnpg`, and `online-boutique` from the GitHub repository.
+## Cluster Security Posture
 
----
+The cluster enforces a strong security baseline using Kyverno admission policies. This guarantees that workloads cannot bypass the established rules.
 
-## 🔐 Secrets Management
-
-We use **External Secrets Operator** (ESO) authenticated via **Workload Identity Federation** (WIF). 
-
-1. Passwords and API tokens are created securely in **Google Secret Manager**.
-2. The ESO runs in the cluster and assumes the `external-secrets-sa` GCP Service Account.
-3. ESO syncs GCP Secrets into native Kubernetes `Secret` objects automatically.
-
----
-
-## 🌐 GitOps App of Apps
-
-Instead of defining Kubernetes resources tightly coupled within Terraform state, this repository embraces a **True GitOps** approach.
-
-- **Infrastructure layer**: Terraform provisions the raw compute and permissions.
-- **Platform layer**: ArgoCD acts as the continuous delivery tool, syncing the `gitops/` folder.
-- **Application layer**: Online Boutique and other apps are deployed purely via Git commits.
+* **Admission Time Verification**: Kyverno intercepts every pod creation request. It rejects any pod in the application namespace that is not cryptographically signed by the official GitHub Actions workflow.
+* **No Latest Tags**: A policy blocks all container images that rely on the ambiguous `latest` tag. Images must have explicit, digest separated tags.
+* **Privilege Restrictions**: Policies require pods to run as a non root user, drop all Linux capabilities, and strictly prevent privilege escalation.
+* **Resource Limits**: Every pod must define explicit CPU and memory requests and limits to prevent noisy neighbor problems.
+* **Node Security**: Shielded Nodes with Secure Boot and Integrity Monitoring are enabled across the cluster. The Workload Metadata server is protected to prevent pods from accessing the host machine credentials.
+* **Least Privilege**: The node service account is restricted to basic logging, monitoring, and registry pull permissions.
