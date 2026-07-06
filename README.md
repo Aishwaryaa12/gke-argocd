@@ -22,6 +22,12 @@ The architecture is divided into three core layers.
 2. **The Platform Layer**: ArgoCD acts as the engine of the platform. It continuously synchronizes the state of the cluster with the Git repository. 
 3. **The Application Layer**: The Google Online Boutique demo runs on top of the platform. It consists of 11 distinct microservices (like Cart, Payment, and Catalog) that communicate securely within the cluster.
 
+## ArgoCD Dashboard
+
+All platform components and workloads are managed and visible through the ArgoCD UI. Every application is continuously synced and healthy.
+
+![ArgoCD Dashboard](./assets/argocd-dashboard.png)
+
 ## Key Architectural Decisions
 
 Several specific technical choices ensure the platform remains secure, highly scalable, and easy to maintain over time.
