@@ -42,7 +42,7 @@ authorizationPolicies:
   create: false
 
 opentelemetryCollector:
-  create: false  # We deploy our own OTel collector via a separate Helm chart
+  create: true  # We deploy our own OTel collector via a separate Helm chart
   name: opentelemetry-collector  # Services send traces to opentelemetry-collector:4317 in this namespace
   projectId: "PROJECT_ID"
 
