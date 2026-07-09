@@ -8,9 +8,9 @@
 * **GitOps**: ArgoCD
 * **Continuous Integration**: GitHub Actions
 * **Security & Policy**: Kyverno, External Secrets Operator, Cosign, Sigstore
-* **Observability**: Prometheus, Loki, Grafana, Grafana Alloy
+* **Observability & Tracing**: OpenTelemetry, Grafana Tempo, Prometheus, Loki, Grafana Alloy
 * **Database**: CloudNativePG (PostgreSQL)
-* **Networking**: Kubernetes Gateway API, Dataplane V2 (Cilium)
+* **Networking**: Kubernetes Gateway API, Dataplane V2 (Cilium), cert-manager
 
 ## Architecture Overview
 
@@ -20,7 +20,7 @@ The architecture is divided into three core layers.
 
 1. **The Infrastructure Layer**: Terraform manages the foundational Google Cloud Platform (GCP) resources. This includes the Virtual Private Cloud (VPC), the GKE cluster, IAM service accounts, and Artifact Registry.
 2. **The Platform Layer**: ArgoCD acts as the engine of the platform. It continuously synchronizes the state of the cluster with the Git repository. 
-3. **The Application Layer**: The Google Online Boutique demo runs on top of the platform. It consists of 11 distinct microservices (like Cart, Payment, and Catalog) that communicate securely within the cluster.
+3. **The Application Layer**: The Google Online Boutique demo runs on top of the platform. It consists of 11 distinct microservices (like Cart, Payment, and Catalog) that communicate securely within the cluster and are deeply instrumented for distributed tracing.
 
 ## ArgoCD Dashboard
 
@@ -33,23 +33,26 @@ All platform components and workloads are managed and visible through the ArgoCD
 Several specific technical choices ensure the platform remains secure, highly scalable, and easy to maintain over time.
 
 ### 1. Gateway API over Traditional Ingress
-The Kubernetes Gateway API is used instead of traditional ingress controllers like NGINX. The Gateway API integrates directly with Google Cloud Load Balancing. This enables native Google Cloud features like managed TLS certificates, Cloud Armor, and global Anycast IPs without managing a separate third party ingress controller. It also provides a cleaner, role oriented routing model.
+The Kubernetes Gateway API is used instead of traditional ingress controllers like NGINX. The Gateway API integrates directly with Google Cloud Load Balancing. This enables native Google Cloud features like Cloud Armor and global Anycast IPs without managing a separate third party ingress controller. It is paired with **cert-manager** to seamlessly automate the lifecycle of wildcard TLS certificates.
 
-### 2. CloudNativePG over Managed Cloud SQL
+### 2. Full-Stack Observability & Distributed Tracing
+A robust telemetry pipeline provides deep visibility into the microservices. **Grafana Alloy** acts as a daemonset log collector feeding into **Loki**. More importantly, the microservices are instrumented with **OpenTelemetry**, streaming spans to a custom OpenTelemetry Collector, which forwards them to **Grafana Tempo**. This provides end-to-end distributed tracing, making it trivial to track requests as they cascade across all 11 microservices.
+
+### 3. CloudNativePG over Managed Cloud SQL
 PostgreSQL is deployed inside the cluster using the CloudNativePG operator instead of relying on a managed service like Google Cloud SQL. This approach keeps cloud costs significantly lower while still providing enterprise grade database features. The operator automatically handles streaming replication, failover, and point in time recovery backups directly to Google Cloud Storage.
 
-### 3. GKE Dataplane V2
+### 4. GKE Dataplane V2
 GKE Dataplane V2 replaces the standard kube proxy. Dataplane V2 is based on eBPF technology (Cilium). It delivers significantly higher networking performance, advanced NetworkPolicies, and deeper network visibility without the performance overhead of legacy iptables rules.
 
-### 4. External Secrets Operator over Sealed Secrets
+### 5. External Secrets Operator over Sealed Secrets
 The External Secrets Operator (ESO) integrates with Google Cloud Secret Manager via Workload Identity. ESO natively syncs secrets from a centralized and audited vault into Kubernetes native Secrets. This avoids the risk of checking encrypted secrets into Git. It also creates a clear separation of concerns. Terraform provisions the vault and access roles, while GitOps handles the synchronization.
 
-### 5. Strict ApplicationSet Path Convention
+### 6. Strict ApplicationSet Path Convention
 A strict directory structure is adopted for all Helm based workloads. An ArgoCD ApplicationSet uses a Git Directory Generator targeting the workloads folder. The ApplicationSet relies on the folder path to dynamically determine the target namespace. Because of this automated mapping, the directory depth must remain exact to prevent deployments from failing.
 
 ## Supply Chain Security Pipeline
 
-To ensure that only trusted code runs in the cluster, a GitHub Actions workflow implements a complete, SLSA aligned supply chain for all 11 microservices. 
+To ensure that only trusted code runs in the cluster, a GitHub Actions workflow implements a complete, SLSA aligned supply chain for all 11 microservices (and a background load generator).
 
 1. **Static Analysis**: Whenever code is pushed, a Trivy SAST scan runs directly on the source code to catch vulnerabilities early.
 2. **Keyless Authentication**: The pipeline authenticates to Google Cloud via Workload Identity Federation. This removes the massive security risk of storing long lived Service Account JSON keys in GitHub.
