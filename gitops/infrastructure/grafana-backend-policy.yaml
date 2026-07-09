@@ -1,0 +1,17 @@
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: grafana-backend-policy
+  namespace: monitoring
+spec:
+  default:
+    healthCheck:
+      config:
+        type: HTTP
+        httpHealthCheck:
+          requestPath: /api/health
+          port: 3000
+  targetRef:
+    group: ""
+    kind: Service
+    name: kube-prometheus-stack-grafana
