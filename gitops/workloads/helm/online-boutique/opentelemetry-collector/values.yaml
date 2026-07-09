@@ -3,6 +3,10 @@ opentelemetry-collector:
   # Services send traces here, collector forwards to Tempo in monitoring namespace
   mode: deployment
 
+  # Required explicitly since chart version 0.90+ removed the default
+  image:
+    repository: otel/opentelemetry-collector-k8s
+
   fullnameOverride: opentelemetry-collector
 
   config:
