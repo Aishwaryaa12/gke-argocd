@@ -19,7 +19,7 @@
 images:
   repository: asia-south1-docker.pkg.dev/project-68d4f10e-27fc-4ab1-ab5/gke-apps-repo
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "6299a644ead600cb4c8f671d8418b54f5259dbd1" # Updated automatically by boutique-ci.yaml GitHub Actions workflow
+  tag: "b85b4ace7ceaf4a26fcf527c6599e2a100452e84"
 
 serviceAccounts:
   # Specifies whether service accounts should be created.
