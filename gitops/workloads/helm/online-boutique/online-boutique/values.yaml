@@ -42,9 +42,8 @@ authorizationPolicies:
   create: false
 
 opentelemetryCollector:
-  create: false
-  name: opentelemetrycollector
-  # Specifies the project id for the otel collector. If set as "PROJECT_ID" (default value), an initContainer will automatically retrieve the project id value from the metadata server.
+  create: false  # We deploy our own OTel collector via a separate Helm chart
+  name: opentelemetry-collector  # Services send traces to opentelemetry-collector:4317 in this namespace
   projectId: "PROJECT_ID"
 
 googleCloudOperations:
