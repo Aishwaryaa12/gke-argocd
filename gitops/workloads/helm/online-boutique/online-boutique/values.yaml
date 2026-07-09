@@ -48,7 +48,7 @@ opentelemetryCollector:
 
 googleCloudOperations:
   profiler: false
-  tracing: false
+  tracing: true
   metrics: false
 
 seccompProfile:
