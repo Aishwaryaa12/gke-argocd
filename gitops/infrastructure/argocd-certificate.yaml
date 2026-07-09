@@ -10,4 +10,3 @@ spec:
     kind: ClusterIssuer
   dnsNames:
     - "*.cralyx.com"
-    - cralyx.com
