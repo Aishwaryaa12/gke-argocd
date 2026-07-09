@@ -1,7 +1,7 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: argocd-cert
+  name: cralyx-wildcard-cert
   namespace: default
 spec:
   secretName: cralyx-tls-secret
@@ -9,4 +9,5 @@ spec:
     name: letsencrypt-prod
     kind: ClusterIssuer
   dnsNames:
-    - argo.cralyx.com
+    - "*.cralyx.com"
+    - cralyx.com
