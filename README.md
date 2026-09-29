@@ -1,72 +1,138 @@
-# GKE, Terraform, and ArgoCD: Platform Engineering Reference Architecture
+# GKE Platform Engineering with Terraform and ArgoCD
 
-> **About:** A production-ready Platform Engineering reference architecture demonstrating a modern, secure, and fully automated cloud-native ecosystem. It features a hardened GKE cluster provisioned via Terraform, an ArgoCD GitOps control plane, and a complete SLSA-aligned supply chain CI/CD pipeline deploying the 11-microservice Google Online Boutique application.
+A cloud platform project that provisions Google Kubernetes Engine with Terraform and delivers Google's Online Boutique sample through GitHub Actions and ArgoCD.
 
-## Stack Overview
+The project connects infrastructure provisioning, cloud identity, container builds, artifact signing, Kubernetes policy, and GitOps delivery in one repository. It demonstrates platform integration around an existing application, with documented boundaries between implemented configuration and remaining operational work.
 
-* **Infrastructure as Code**: Terraform, Google Kubernetes Engine (GKE)
-* **GitOps**: ArgoCD
-* **Continuous Integration**: GitHub Actions
-* **Security & Policy**: Kyverno, External Secrets Operator, Cosign, Sigstore
-* **Observability & Tracing**: OpenTelemetry, Grafana Tempo, Prometheus, Loki, Grafana Alloy
-* **Database**: CloudNativePG (PostgreSQL)
-* **Networking**: Kubernetes Gateway API, Dataplane V2 (Cilium), cert-manager
+## Project highlights
 
-## Architecture Overview
+- **Infrastructure as code:** Terraform modules manage networking, IAM, a zonal GKE cluster, and its autoscaling node pool.
+- **GitOps delivery:** Terraform installs ArgoCD and its root Application. An ApplicationSet discovers Helm workloads by directory convention.
+- **Federated CI identity:** GitHub Actions authenticates to Google Cloud through Workload Identity Federation, restricted to this repository's `main` branch.
+- **Artifact traceability:** Images receive commit SHA tags, Cosign signatures, and signed SPDX SBOM attachments generated with Syft.
+- **Workload controls:** Boutique templates configure non-root execution, dropped capabilities, no privilege escalation, read-only root filesystems, and resource requests/limits.
+- **Platform services:** The repository includes metrics, logs, tracing, certificate management, policy enforcement, and a separate PostgreSQL operator example.
 
-![Architecture Diagram](./assets/architecture.png)
+## Architecture
 
-The architecture is divided into three core layers.
+```mermaid
+flowchart TD
+    TF[Terraform] --> Network[VPC, subnet, firewall, router and NAT]
+    TF --> IAM[Node, CI and secret-access identities]
+    Network --> GKE[Zonal GKE cluster]
+    IAM --> GKE
+    TF --> GAR[Artifact Registry]
+    GKE --> Argo[ArgoCD bootstrap]
+    Argo --> Root[Root Application]
+    Root --> Platform[Infrastructure and policy Applications]
+    Root --> AppSet[Helm workload ApplicationSet]
+    AppSet --> Workloads[Boutique and platform workloads]
 
-1. **The Infrastructure Layer**: Terraform manages the foundational Google Cloud Platform (GCP) resources. This includes the Virtual Private Cloud (VPC), the GKE cluster, IAM service accounts, and Artifact Registry.
-2. **The Platform Layer**: ArgoCD acts as the engine of the platform. It continuously synchronizes the state of the cluster with the Git repository. 
-3. **The Application Layer**: The Google Online Boutique demo runs on top of the platform. It consists of 11 distinct microservices (like Cart, Payment, and Catalog) that communicate securely within the cluster and are deeply instrumented for distributed tracing.
+    Source[Source commit] --> CI[GitHub Actions matrix]
+    CI -->|Build, scan, publish and sign| GAR
+    CI -->|Commit image tag| GitOps[GitOps Helm values]
+    GitOps --> Argo
 
-## ArgoCD Dashboard
+    User[Storefront user] --> LB[HTTP LoadBalancer Service]
+    LB --> Frontend[Frontend and gRPC services]
+    Frontend --> Redis[Redis cart storage]
 
-All platform components and workloads are managed and visible through the ArgoCD UI. Every application is continuously synced and healthy.
+    Operator[Operator HTTPS request] --> Gateway[GKE Gateway]
+    Gateway --> Dashboards[ArgoCD and Grafana]
+```
 
-![ArgoCD Dashboard](./assets/argocd-dashboard.png)
+The storefront and management interfaces use different entry paths. Boutique exposes `frontend-external` as an HTTP LoadBalancer Service on port 80, targeting frontend port 8080. The shared HTTPS Gateway routes `argo.cralyx.com` to ArgoCD and `dash.cralyx.com` to Grafana.
 
-## Key Architectural Decisions
+## Infrastructure and identity
 
-Several specific technical choices ensure the platform remains secure, highly scalable, and easy to maintain over time.
+| Area | Configuration |
+|---|---|
+| Network | Custom VPC, regional subnet, separate Pod and Service secondary ranges |
+| Address ranges | Nodes: `10.0.0.0/20`; Pods: `10.48.0.0/14`; Services: `10.52.0.0/20` |
+| GKE | Zonal cluster, Dataplane V2, Workload Identity, Gateway API, authorized control-plane networks |
+| Node pool | `e2-standard-2` default, autoscaling from 1 to 5 nodes, automatic repair and upgrades |
+| Node security | Secure Boot, integrity monitoring, GKE metadata mode, dedicated node service account |
+| Outbound networking | Cloud Router, Cloud NAT, and Private Google Access |
+| Terraform state | GCS backend with a configured bucket and state prefix |
+| Registry | Regional Artifact Registry Docker repository |
 
-### 1. Gateway API over Traditional Ingress
-The Kubernetes Gateway API is used instead of traditional ingress controllers like NGINX. The Gateway API integrates directly with Google Cloud Load Balancing. This enables native Google Cloud features like Cloud Armor and global Anycast IPs without managing a separate third party ingress controller. It is paired with **cert-manager** to seamlessly automate the lifecycle of wildcard TLS certificates.
+The node identity has logging, monitoring, and registry-read roles. CI uses a separate service account with writer access to the application registry repository. The federation provider checks both repository identity and `refs/heads/main`.
 
-### 2. Full-Stack Observability & Distributed Tracing
-A robust telemetry pipeline provides deep visibility into the microservices. **Grafana Alloy** acts as a daemonset log collector feeding into **Loki**. More importantly, the microservices are instrumented with **OpenTelemetry**, streaming spans to a custom OpenTelemetry Collector, which forwards them to **Grafana Tempo**. This provides end-to-end distributed tracing, making it trivial to track requests as they cascade across all 11 microservices.
+The default initial node count is one; the example variables file sets three. Cloud NAT does not by itself establish a private-node cluster, and no explicit private-cluster configuration is included.
 
-### 3. CloudNativePG over Managed Cloud SQL
-PostgreSQL is deployed inside the cluster using the CloudNativePG operator instead of relying on a managed service like Google Cloud SQL. This approach keeps cloud costs significantly lower while still providing enterprise grade database features. The operator automatically handles streaming replication, failover, and point in time recovery backups directly to Google Cloud Storage.
+## Build and release workflow
 
-### 4. GKE Dataplane V2
-GKE Dataplane V2 replaces the standard kube proxy. Dataplane V2 is based on eBPF technology (Cilium). It delivers significantly higher networking performance, advanced NetworkPolicies, and deeper network visibility without the performance overhead of legacy iptables rules.
+The [GitHub Actions workflow](.github/workflows/boutique-ci.yaml) runs for source or workflow changes on `main`, and supports manual dispatch.
 
-### 5. External Secrets Operator over Sealed Secrets
-The External Secrets Operator (ESO) integrates with Google Cloud Secret Manager via Workload Identity. ESO natively syncs secrets from a centralized and audited vault into Kubernetes native Secrets. This avoids the risk of checking encrypted secrets into Git. It also creates a clear separation of concerns. Terraform provisions the vault and access roles, while GitOps handles the synchronization.
+1. Select the Docker build context for each service.
+2. Run a Trivy filesystem scan.
+3. Authenticate to Google Cloud using GitHub OIDC federation.
+4. Build an image tagged with the source commit SHA.
+5. Run a Trivy image scan and push to Artifact Registry.
+6. Sign the image with Cosign, generate an SPDX SBOM with Syft, and attach and sign that SBOM.
+7. After all matrix jobs succeed, update the shared image tag in Boutique's Helm values and commit it to Git.
+8. ArgoCD reconciles the updated workload configuration.
 
-### 6. Strict ApplicationSet Path Convention
-A strict directory structure is adopted for all Helm based workloads. An ArgoCD ApplicationSet uses a Git Directory Generator targeting the workloads folder. The ApplicationSet relies on the folder path to dynamically determine the target namespace. Because of this automated mapping, the directory depth must remain exact to prevent deployments from failing.
+Both Trivy scans are currently advisory: vulnerability findings use `exit-code: '0'`. Image signatures and SBOMs provide artifact identity and inventory, but the workflow does not declare a formal SLSA level or generate complete build provenance.
 
-## Supply Chain Security Pipeline
+The matrix builds twelve images, including the shopping assistant. The checked Boutique chart deploys eleven custom images, including the load generator, plus public Redis. The shopping assistant is disabled and has no deployment template in this chart.
 
-To ensure that only trusted code runs in the cluster, a GitHub Actions workflow implements a complete, SLSA aligned supply chain for all 11 microservices (and a background load generator).
+## GitOps organization
 
-1. **Static Analysis**: Whenever code is pushed, a Trivy SAST scan runs directly on the source code to catch vulnerabilities early.
-2. **Keyless Authentication**: The pipeline authenticates to Google Cloud via Workload Identity Federation. This removes the massive security risk of storing long lived Service Account JSON keys in GitHub.
-3. **Build and Scan**: The pipeline builds the Docker image and tags it with the exact Git commit hash. A second Trivy scan checks the built container image for critical vulnerabilities before it can be pushed.
-4. **Sign and Attest**: The verified image is pushed to Artifact Registry. It is then cryptographically signed using Cosign keyless signing via the Sigstore transparency log. Finally, a Software Bill of Materials (SBOM) is generated, attached to the image, and signed.
-5. **GitOps Update**: Once all builds and scans pass successfully, a final job automatically commits the new image hashes into the ArgoCD configuration. ArgoCD detects the change and deploys the new images.
+Terraform owns the cloud foundation, ArgoCD Helm release, and root Application. ArgoCD owns the downstream Kubernetes configuration.
 
-## Cluster Security Posture
+The ApplicationSet discovers:
 
-The cluster enforces a strong security baseline using Kyverno admission policies. This guarantees that workloads cannot bypass the established rules.
+```text
+gitops/workloads/helm/<namespace>/<application>
+```
 
-* **Admission Time Verification**: Kyverno intercepts every pod creation request. It rejects any pod in the application namespace that is not cryptographically signed by the official GitHub Actions workflow.
-* **No Latest Tags**: A policy blocks all container images that rely on the ambiguous `latest` tag. Images must have explicit, digest separated tags.
-* **Privilege Restrictions**: Policies require pods to run as a non root user, drop all Linux capabilities, and strictly prevent privilege escalation.
-* **Resource Limits**: Every pod must define explicit CPU and memory requests and limits to prevent noisy neighbor problems.
-* **Node Security**: Shielded Nodes with Secure Boot and Integrity Monitoring are enabled across the cluster. The Workload Metadata server is protected to prevent pods from accessing the host machine credentials.
-* **Least Privilege**: The node service account is restricted to basic logging, monitoring, and registry pull permissions.
+The last directory determines the Application name, and the namespace comes from the path. Generated Applications enable automated synchronization, pruning, self-healing, and namespace creation. Directory depth and unique application names are therefore part of the deployment contract.
+
+| Path | Contents |
+|---|---|
+| [`modules/networking/`](modules/networking/) | VPC, subnet, firewall rules, router, and NAT |
+| [`modules/gke/`](modules/gke/) | Cluster and node pool |
+| [`modules/iam/`](modules/iam/) | Service accounts, IAM grants, and federation |
+| [`main.tf`](main.tf) | Module composition, state-address migrations, and ArgoCD bootstrap |
+| [`.github/workflows/`](.github/workflows/) | Container build and GitOps promotion pipeline |
+| [`gitops/argocd/`](gitops/argocd/) | Child Applications and Helm ApplicationSet |
+| [`gitops/infrastructure/`](gitops/infrastructure/) | Gateway routes, health checks, certificates, network policies, and secret store |
+| [`gitops/policies/`](gitops/policies/) | Kyverno validation policies |
+| [`gitops/workloads/helm/`](gitops/workloads/helm/) | Application and platform charts |
+| [`gitops/workloads/raw/`](gitops/workloads/raw/) | Additional manifests not currently selected by an ArgoCD source |
+| [`src/online-boutique/`](src/online-boutique/) | Vendored sample application source and Dockerfiles |
+
+## Security and observability
+
+Kyverno policies declare enforcement for non-root execution, capability dropping, privilege-escalation restrictions, resource limits, and image-tag checks, with explicit platform-namespace exclusions. Boutique templates also supply resource requests and RuntimeDefault seccomp settings. The resource policy checks limits; it does not require requests.
+
+Gateway certificates use cert-manager with Cloudflare DNS-01. HealthCheckPolicies configure the managed load balancer's checks for ArgoCD and Grafana. Separate NetworkPolicies restrict ingress to those management workloads. Boutique's optional application NetworkPolicies and service-mesh configuration are disabled.
+
+The telemetry configuration brings together:
+
+- **Prometheus and Grafana:** Seven-day metrics retention with a 20Gi Prometheus claim and 5Gi Grafana persistence.
+- **Alloy and Loki:** Kubernetes log collection and a filesystem-backed Loki deployment.
+- **OpenTelemetry and Tempo:** Instrumented services export to a collector Deployment, which forwards traces to Tempo.
+
+Trace instrumentation is partial. Shipping's tracing implementation is a placeholder. Alloy and Tempo wrapper values also need correction and rendered-chart validation before claiming complete telemetry coverage or durable trace storage. Alertmanager currently routes to a null receiver, so external notification delivery is not configured.
+
+## Database example
+
+CloudNativePG declares a separate two-instance PostgreSQL cluster, with 10Gi storage per instance and a daily backup schedule targeting GCS. Boutique's cart service uses Redis, not this PostgreSQL cluster. Redis uses `emptyDir`, so cart data does not survive Pod replacement.
+
+The PostgreSQL example demonstrates operator-managed database configuration. Backup bucket provisioning, workload permissions, and successful restore validation remain necessary before claiming a working recovery process.
+
+## Current scope and next steps
+
+- **Reproducible bootstrap:** Document and provision the state bucket, Git repository credentials, Cloudflare token, and required cloud APIs. Separate cluster/operator readiness from dependent custom-resource creation.
+- **Admission verification:** Connect the raw image-signature policy to an ArgoCD source and validate it against the pinned Kyverno version. Its presence in Git does not currently establish enforcement.
+- **Secret delivery:** Complete the External Secrets identity configuration and add ExternalSecret mappings. The existing ClusterSecretStore and IAM definitions are only part of that path.
+- **Release safety:** Add explicit application tests, enforced vulnerability policy, pinned tool revisions, serialized promotion, and deployment health checks.
+- **Reliability:** Establish backup/restore evidence, application scaling and disruption controls, HTTPS storefront routing, and working alert delivery.
+
+This is a platform engineering demonstration. Production suitability depends on closing these gaps and validating the resulting behavior under deployment, failure, and recovery scenarios.
+
+## Application attribution
+
+Online Boutique is Google's sample microservices application. Its source and chart retain upstream copyright and license notices. The portfolio focus here is the infrastructure, delivery pipeline, GitOps organization, and platform configuration around that application.
