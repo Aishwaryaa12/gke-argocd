@@ -1,5 +1,7 @@
 # GKE Platform Engineering with Terraform and ArgoCD
 
+> **Archived project:** The GKE cluster is no longer running. This repository is retained as a public archive for reference and is no longer actively maintained. The configuration and service endpoints below are historical and do not represent a currently running deployment.
+
 A cloud platform project that provisions Google Kubernetes Engine with Terraform and delivers Google's Online Boutique sample through GitHub Actions and ArgoCD.
 
 The project connects infrastructure provisioning, cloud identity, container builds, artifact signing, Kubernetes policy, and GitOps delivery in one repository. It demonstrates platform integration around an existing application, with documented boundaries between implemented configuration and remaining operational work.
@@ -123,7 +125,7 @@ CloudNativePG declares a separate two-instance PostgreSQL cluster, with 10Gi sto
 
 The PostgreSQL example demonstrates operator-managed database configuration. Backup bucket provisioning, workload permissions, and successful restore validation remain necessary before claiming a working recovery process.
 
-## Current scope and next steps
+## Known limitations at archival
 
 - **Reproducible bootstrap:** Document and provision the state bucket, Git repository credentials, Cloudflare token, and required cloud APIs. Separate cluster/operator readiness from dependent custom-resource creation.
 - **Admission verification:** Connect the raw image-signature policy to an ArgoCD source and validate it against the pinned Kyverno version. Its presence in Git does not currently establish enforcement.
